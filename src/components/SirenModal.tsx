@@ -168,9 +168,31 @@ export default function SirenModal({
           </span>
         </div>
 
+        {/* Zero-Click Auto-Redirect Notification Banner */}
+        <div
+          style={{
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid #10b981',
+            borderRadius: '10px',
+            padding: '0.65rem 0.85rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            color: '#6ee7b7',
+            fontSize: '0.825rem',
+            fontWeight: 700,
+          }}
+        >
+          <CheckCircle2 size={16} color="#10b981" />
+          <span>🚀 Auto-Opened Official Railway Portal & Copied Details to Clipboard!</span>
+        </div>
+
         <p style={{ color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.4 }}>
           Exact matching seats confirmed. Polling has been automatically stopped to avoid redundant queries. Complete your booking on the official portal immediately.
         </p>
+
 
         {/* Detailed Match Information Box */}
         <div

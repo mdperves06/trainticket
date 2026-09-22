@@ -6,6 +6,7 @@ import CountdownTimer from '@/components/CountdownTimer';
 import AlertCard, { AlertData } from '@/components/AlertCard';
 import SirenModal from '@/components/SirenModal';
 import QuickFillModal from '@/components/QuickFillModal';
+import { generateDeepSearchUrl, copyToClipboard } from '@/lib/bookmarkletGenerator';
 import {
   PlusCircle,
   RefreshCw,
@@ -27,9 +28,10 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [showQuickFill, setShowQuickFill] = useState(false);
 
-
   // Track dismissed sirens in current session
   const [dismissedSirenIds, setDismissedSirenIds] = useState<Set<string>>(new Set());
+  // Track auto-redirected alerts so we only auto-open once per detection
+  const autoRedirectedAlertIds = useRef<Set<string>>(new Set());
 
   // Polling interval ref
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,7 +51,29 @@ export default function Dashboard() {
 
         if (found) {
           setActiveSirenAlert(found);
+
+          // Zero-Click Auto-Redirect & Auto-Clipboard (Immediate handoff to official portal)
+          if (!autoRedirectedAlertIds.current.has(found.id)) {
+            autoRedirectedAlertIds.current.add(found.id);
+
+            const copyText = `ROUTE: ${found.fromStation} -> ${found.toStation} | DATE: ${found.journeyDate} | CLASS: ${found.seatClass} | PASSENGERS: ${found.passengerCount}${found.preferredCoach ? ` | COACH: ${found.preferredCoach}` : ''}`;
+            copyToClipboard(copyText);
+
+            const portalUrl = generateDeepSearchUrl(
+              found.fromStation,
+              found.toStation,
+              found.journeyDate,
+              found.seatClass
+            );
+
+            try {
+              window.open(portalUrl, '_blank', 'noopener,noreferrer');
+            } catch (err) {
+              console.warn('Auto-redirect window.open blocked by browser:', err);
+            }
+          }
         }
+
 
         setLastUpdated(
           new Date().toLocaleTimeString('en-US', {

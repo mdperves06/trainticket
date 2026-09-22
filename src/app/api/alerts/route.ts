@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { executeAlertScan } from '@/worker/pollingWorker';
 
 export async function GET() {
   try {
@@ -70,7 +71,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Immediately trigger scan on creation so monitoring starts right away
+    executeAlertScan(alert.id).catch((err) =>
+      console.error('Initial scan on alert creation failed:', err)
+    );
+
     return NextResponse.json({ success: true, alert }, { status: 201 });
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to create alert';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
@@ -141,9 +148,16 @@ export async function PATCH(req: NextRequest) {
       data: dataToUpdate,
     });
 
+    if (dataToUpdate.status === 'MONITORING') {
+      executeAlertScan(id).catch((err) =>
+        console.error('Scan after updating alert status failed:', err)
+      );
+    }
+
     return NextResponse.json({ success: true, alert: updated });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to update alert';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
 }

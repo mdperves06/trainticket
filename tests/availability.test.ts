@@ -123,6 +123,34 @@ async function runTests() {
   assert(bookmarklet.startsWith('javascript:(function()'), 'Bookmarklet starts with javascript:(function()');
   assert(bookmarklet.includes('Chattogram') && bookmarklet.includes('Dhaka'), 'Bookmarklet contains target stations');
 
+  // Test 9: All 9 Bangladesh Railway Seat Classes
+  console.log('\n[Test 9] Comprehensive 9-Class Normalization:');
+  assert(normalizeClass('S_CHAIR') === 'S_CHAIR', 'S_CHAIR normalized');
+  assert(normalizeClass('SNIGDHA') === 'SNIGDHA', 'SNIGDHA normalized');
+  assert(normalizeClass('AC_B') === 'AC_B', 'AC_B normalized');
+  assert(normalizeClass('AC_S') === 'AC_S', 'AC_S normalized');
+  assert(normalizeClass('F_BERTH') === 'F_BERTH', 'F_BERTH normalized');
+  assert(normalizeClass('F_SEAT') === 'F_SEAT', 'F_SEAT normalized');
+  assert(normalizeClass('F_CHAIR') === 'F_CHAIR', 'F_CHAIR normalized');
+  assert(normalizeClass('SHOVON') === 'SHOVON', 'SHOVON normalized');
+  assert(normalizeClass('SHULOV') === 'SHULOV', 'SHULOV normalized');
+
+  // Test 10: Expanded Station Directory Normalization
+  console.log('\n[Test 10] Expanded Station Directory Normalization:');
+  assert(normalizeStation('Mymensingh') === 'MYMENSINGH', 'normalizeStation("Mymensingh") -> MYMENSINGH');
+  assert(normalizeStation('Rangpur') === 'RANGPUR', 'normalizeStation("Rangpur") -> RANGPUR');
+  assert(normalizeStation('Bogra') === 'BOGURA', 'normalizeStation("Bogra") -> BOGURA');
+  assert(normalizeStation('Bogura') === 'BOGURA', 'normalizeStation("Bogura") -> BOGURA');
+  assert(normalizeStation('Dinajpur') === 'DINAJPUR', 'normalizeStation("Dinajpur") -> DINAJPUR');
+  assert(normalizeStation('Jessore') === 'JASHORE', 'normalizeStation("Jessore") -> JASHORE');
+  assert(normalizeStation('Jashore') === 'JASHORE', 'normalizeStation("Jashore") -> JASHORE');
+
+  // Test 11: Dynamic Route Fallback Coverage
+  console.log('\n[Test 11] Dynamic Route Fallback Coverage:');
+  const mymTrains = getTrainsForRoute('Mymensingh', 'Dhaka', '2026-10-02');
+  assert(mymTrains.length > 0, `Mymensingh -> Dhaka returns operating trains (got: ${mymTrains.length})`);
+  assert(Boolean(mymTrains[0].trainName), `First train has valid name: ${mymTrains[0].trainName}`);
+
   console.log('\n=================================================');
   console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
   console.log('=================================================\n');
@@ -131,6 +159,7 @@ async function runTests() {
     process.exit(1);
   }
 }
+
 
 runTests().catch((err) => {
   console.error('Test runner encountered an error:', err);

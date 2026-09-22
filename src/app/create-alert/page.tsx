@@ -23,21 +23,10 @@ import {
 } from 'lucide-react';
 import { getFareForRoute } from '@/lib/railwayFares';
 import { TrainInfo } from '@/providers/railwayService';
+import { BANGLADESH_STATIONS, BANGLADESH_CLASSES } from '@/lib/railwayDatabase';
 
-const STATIONS = [
-  'Dhaka',
-  'Chittagong',
-  'Sylhet',
-  'Rajshahi',
-  'Khulna',
-  'Coxs Bazar',
-  'Rangpur',
-  'Mymensingh',
-  'Bogra',
-  'Cumilla',
-  'Brahmanbaria',
-  'Sreemangal',
-];
+const STATIONS = BANGLADESH_STATIONS;
+
 
 export default function CreateAlertPage() {
   const router = useRouter();
@@ -582,17 +571,13 @@ export default function CreateAlertPage() {
                 marginBottom: '1.25rem',
               }}
             >
-              {[
-                { id: 'S_CHAIR', label: 'Shovon Chair (Non-AC)' },
-                { id: 'SNIGDHA', label: 'Snigdha (AC Chair)' },
-                { id: 'AC_BERTH', label: 'AC Berth / Cabin' },
-              ].map((sc) => {
-                const isSelected = seatClass === sc.id;
-                const price = getFareForRoute(fromStation, toStation, sc.id);
+              {BANGLADESH_CLASSES.map((sc) => {
+                const isSelected = seatClass === sc.code;
+                const price = getFareForRoute(fromStation, toStation, sc.code);
                 return (
                   <div
-                    key={sc.id}
-                    onClick={() => setSeatClass(sc.id)}
+                    key={sc.code}
+                    onClick={() => setSeatClass(sc.code)}
                     style={{
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
@@ -607,7 +592,7 @@ export default function CreateAlertPage() {
                     }}
                   >
                     <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#f8fafc' }}>
-                      {sc.label}
+                      {sc.name}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 700, marginTop: '0.2rem' }}>
                       ৳{price}
@@ -616,6 +601,7 @@ export default function CreateAlertPage() {
                 );
               })}
             </div>
+
 
             {/* Passenger Count & Preferred Coach */}
             <div

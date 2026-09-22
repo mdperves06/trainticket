@@ -34,21 +34,23 @@ export function getFareForRoute(from: string, to: string, seatClass: string): nu
   const normalizedTo = to.trim().toLowerCase();
 
   const match = STATION_FARES.find(
-    r => (r.from.toLowerCase() === normalizedFrom && r.to.toLowerCase() === normalizedTo) ||
-         (r.from.toLowerCase() === normalizedTo && r.to.toLowerCase() === normalizedFrom)
+    (r) =>
+      (r.from.toLowerCase() === normalizedFrom && r.to.toLowerCase() === normalizedTo) ||
+      (r.from.toLowerCase() === normalizedTo && r.to.toLowerCase() === normalizedFrom)
   );
 
-  const normalizedClass = seatClass.trim().toUpperCase();
+  const normalizedClass = seatClass.trim().toUpperCase().replace(/[\s-]/g, '_');
+  const baseRate = match ? match.shovonChair : 350;
 
-  if (match) {
-    if (normalizedClass === "SNIGDHA") return match.snigdha;
-    if (normalizedClass === "AC_BERTH" || normalizedClass === "AC_B") return match.acBerth;
-    return match.shovonChair;
-  }
+  if (normalizedClass === 'SNIGDHA') return match ? match.snigdha : Math.round(baseRate * 1.9);
+  if (normalizedClass === 'AC_BERTH' || normalizedClass === 'AC_B') return match ? match.acBerth : Math.round(baseRate * 2.85);
+  if (normalizedClass === 'AC_S' || normalizedClass === 'AC_SEAT') return Math.round(baseRate * 2.2);
+  if (normalizedClass === 'F_BERTH') return Math.round(baseRate * 1.6);
+  if (normalizedClass === 'F_SEAT') return Math.round(baseRate * 1.3);
+  if (normalizedClass === 'F_CHAIR') return Math.round(baseRate * 1.25);
+  if (normalizedClass === 'SHOVON') return Math.round(baseRate * 0.7);
+  if (normalizedClass === 'SHULOV') return Math.round(baseRate * 0.45);
 
-  // Dynamic fallback based on station string distance / default base rates
-  const baseRate = 350;
-  if (normalizedClass === "SNIGDHA") return Math.round(baseRate * 1.9);
-  if (normalizedClass === "AC_BERTH" || normalizedClass === "AC_B") return Math.round(baseRate * 2.85);
   return baseRate;
 }
+

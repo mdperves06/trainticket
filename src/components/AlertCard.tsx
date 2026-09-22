@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { ScanHistoryEntry } from '@/worker/pollingWorker';
 import { generateDeepSearchUrl } from '@/lib/bookmarkletGenerator';
+import { BANGLADESH_CLASSES } from '@/lib/railwayDatabase';
+
 
 export interface AlertData {
   id: string;
@@ -131,22 +133,36 @@ export default function AlertCard({
             <Pause size={12} /> ⏸ PAUSED
           </span>
         );
+      case 'COMPLETED':
+        return (
+          <span
+            className="badge"
+            style={{
+              background: 'rgba(59, 130, 246, 0.15)',
+              color: '#93c5fd',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+            }}
+          >
+            <CheckCircle2 size={12} /> ✅ COMPLETED
+          </span>
+        );
       case 'IDLE':
       default:
         return (
           <span
             className="badge"
             style={{
-              background: 'rgba(16, 185, 129, 0.1)',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              background: 'rgba(100, 116, 139, 0.15)',
+              color: '#94a3b8',
+              border: '1px solid rgba(100, 116, 139, 0.25)',
             }}
           >
-            🟢 IDLE
+            ⚪ IDLE
           </span>
         );
     }
   };
+
 
   const formattedDate = new Date(alert.journeyDate).toLocaleDateString('en-US', {
     weekday: 'short',
@@ -375,25 +391,38 @@ export default function AlertCard({
             </button>
           )}
 
-          {/* ⏸ Pause / ▶ Resume */}
-          <button
-            onClick={() => onTogglePause(alert.id, alert.status)}
-            className="btn btn-secondary"
-            style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
-            title={isPaused ? 'Resume polling timers' : 'Cease background polling timers'}
-          >
-            {isPaused ? (
-              <>
-                <Play size={14} color="#10b981" />
-                <span>▶ Resume</span>
-              </>
-            ) : (
-              <>
-                <Pause size={14} color="#f59e0b" />
-                <span>⏸ Pause</span>
-              </>
-            )}
-          </button>
+          {/* ▶ Start Monitoring or ⏸ Pause */}
+          {alert.status === 'MONITORING' ? (
+            <button
+              onClick={() => onTogglePause(alert.id, alert.status)}
+              className="btn btn-secondary"
+              style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
+              title="Pause background polling timers"
+            >
+              <Pause size={14} color="#f59e0b" />
+              <span>⏸ Pause</span>
+            </button>
+          ) : (
+            onUpdateAlert && (
+              <button
+                onClick={() => onUpdateAlert(alert.id, { status: 'MONITORING', isActive: true })}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '0.775rem',
+                  padding: '0.4rem 0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
+                }}
+                title="Activate real-time monitoring and trigger immediate scan"
+              >
+                <Play size={13} fill="#070b14" />
+                <span>▶ Start Monitoring</span>
+              </button>
+            )
+          )}
+
 
           {/* ✏️ Edit Alert */}
           {onUpdateAlert && (
@@ -544,11 +573,14 @@ export default function AlertCard({
                   value={editClass}
                   onChange={(e) => setEditClass(e.target.value)}
                 >
-                  <option value="S_CHAIR">Shovon Chair (S_CHAIR)</option>
-                  <option value="SNIGDHA">Snigdha (SNIGDHA)</option>
-                  <option value="AC_BERTH">AC Berth (AC_BERTH)</option>
+                  {BANGLADESH_CLASSES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Passengers</label>
