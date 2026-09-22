@@ -67,12 +67,28 @@ export function generateDeepSearchUrl(
   date: string,
   seatClass: string
 ): string {
-  // Format date to DD-Mon-YYYY if needed, or maintain YYYY-MM-DD
+  // Format date to official DD-Mon-YYYY (e.g. 02-Oct-2026) if in YYYY-MM-DD
+  let formattedDate = date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthName = months[parseInt(month, 10) - 1];
+    formattedDate = `${day}-${monthName}-${year}`;
+  }
+
+  // Normalize station names to official portal spelling
+  let officialFrom = from;
+  let officialTo = to;
+  if (officialFrom.toLowerCase().includes('cox')) officialFrom = "Cox's Bazar";
+  if (officialTo.toLowerCase().includes('cox')) officialTo = "Cox's Bazar";
+
+  const targetClass = seatClass === 'ANY_CLASS' ? 'S_CHAIR' : seatClass;
+
   return `https://eticket.railway.gov.bd/booking/train/search?fromcity=${encodeURIComponent(
-    from
-  )}&tocity=${encodeURIComponent(to)}&doj=${encodeURIComponent(
-    date
-  )}&class=${encodeURIComponent(seatClass)}`;
+    officialFrom
+  )}&tocity=${encodeURIComponent(officialTo)}&doj=${encodeURIComponent(
+    formattedDate
+  )}&class=${encodeURIComponent(targetClass)}`;
 }
 
 /**

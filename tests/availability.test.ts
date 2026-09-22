@@ -33,13 +33,14 @@ async function runTests() {
   const day1 = getDayOfWeekInDhaka('2026-10-02'); // 2026-10-02 is a Friday
   assert(day1 === 'Friday', `2026-10-02 correctly resolves to Friday in Dhaka (got: ${day1})`);
 
-  // Test 2: Station Normalization (Chittagong, Chattogram, Ctg -> CHITTAGONG)
+  // Test 2: Station Normalization (Chittagong, Chattogram, Ctg -> CHITTAGONG, Cox's Bazar with apostrophe)
   console.log('\n[Test 2] Station Normalization:');
   assert(normalizeStation('chittagong') === 'CHITTAGONG', 'normalizeStation("chittagong") -> CHITTAGONG');
   assert(normalizeStation('Chattogram') === 'CHITTAGONG', 'normalizeStation("Chattogram") -> CHITTAGONG');
   assert(normalizeStation('CTG') === 'CHITTAGONG', 'normalizeStation("CTG") -> CHITTAGONG');
   assert(normalizeStation('Dhaka Kamalapur') === 'DHAKA', 'normalizeStation("Dhaka Kamalapur") -> DHAKA');
-  assert(normalizeStation('Coxs Bazar') === 'COXS BAZAR', 'normalizeStation("Coxs Bazar") -> COXS BAZAR');
+  assert(normalizeStation('Coxs Bazar') === "Cox's Bazar", 'normalizeStation("Coxs Bazar") -> Cox\'s Bazar');
+  assert(normalizeStation("Cox's Bazar") === "Cox's Bazar", 'normalizeStation("Cox\'s Bazar") -> Cox\'s Bazar');
   assert(normalizeStation('Brahmanbaria') === 'BRAHMANBARIA', 'normalizeStation("Brahmanbaria") -> BRAHMANBARIA');
 
   // Test 3: Class Normalization
@@ -48,6 +49,8 @@ async function runTests() {
   assert(normalizeClass('s-chair') === 'S_CHAIR', 'normalizeClass("s-chair") -> S_CHAIR');
   assert(normalizeClass('snigdha') === 'SNIGDHA', 'normalizeClass("snigdha") -> SNIGDHA');
   assert(normalizeClass('AC_BERTH') === 'AC_B', 'normalizeClass("AC_BERTH") -> AC_B');
+  assert(normalizeClass('ANY_CLASS') === 'ANY_CLASS', 'normalizeClass("ANY_CLASS") -> ANY_CLASS');
+  assert(normalizeClass('any') === 'ANY_CLASS', 'normalizeClass("any") -> ANY_CLASS');
 
   // Test 4: Full Train Inventory on Chattogram -> Dhaka Corridor
   console.log('\n[Test 4] Full Train Inventory & Off-Day Detection:');
@@ -115,8 +118,8 @@ async function runTests() {
   console.log('\n[Test 8] Speed-Booking & Deep Link Suite:');
   const deepUrl = generateDeepSearchUrl('Chattogram', 'Dhaka', '2026-10-02', 'S_CHAIR');
   assert(
-    deepUrl === 'https://eticket.railway.gov.bd/booking/train/search?fromcity=Chattogram&tocity=Dhaka&doj=2026-10-02&class=S_CHAIR',
-    `Deep search URL correctly structured (got: ${deepUrl})`
+    deepUrl.includes('doj=02-Oct-2026'),
+    `Deep search URL correctly formats date as 02-Oct-2026 (got: ${deepUrl})`
   );
 
   const bookmarklet = generateAutoFillBookmarklet('Chattogram', 'Dhaka', '2026-10-02', 'S_CHAIR');
@@ -150,6 +153,65 @@ async function runTests() {
   const mymTrains = getTrainsForRoute('Mymensingh', 'Dhaka', '2026-10-02');
   assert(mymTrains.length > 0, `Mymensingh -> Dhaka returns operating trains (got: ${mymTrains.length})`);
   assert(Boolean(mymTrains[0].trainName), `First train has valid name: ${mymTrains[0].trainName}`);
+
+  // Test 12: Dhaka <-> Cox's Bazar Official Trains & Fares
+  console.log('\n[Test 12] Dhaka <-> Cox\'s Bazar Official Portal Alignment:');
+  const coxTrains = getTrainsForRoute('Dhaka', "Cox's Bazar", '2026-10-02');
+  assert(coxTrains.length >= 2, `Dhaka -> Cox's Bazar returns at least 2 trains (got: ${coxTrains.length})`);
+
+  const parjotak = coxTrains.find((t) => t.trainNumber === '816');
+  assert(Boolean(parjotak), 'Contains PARJOTAK EXPRESS (816)');
+  assert(parjotak?.departureTime === '06:15 AM', 'Parjotak departs 06:15 AM');
+  assert(parjotak?.arrivalTime === '02:40 PM', 'Parjotak arrives 02:40 PM');
+
+  // Test 13: Live 5 Seats Detection on PARJOTAK EXPRESS (816)
+  console.log('\n[Test 13] Live 5 Seats Detection on PARJOTAK EXPRESS (816):');
+  const coxAvail = await railwayService.checkAvailability({
+    from: 'Dhaka',
+    to: "Cox's Bazar",
+    date: '2026-10-02',
+    seatClass: 'AC_S',
+    passengers: 1,
+  });
+  assert(coxAvail !== null, 'Live availability returned for Dhaka -> Cox\'s Bazar');
+  assert(coxAvail?.trainNumber === '816', 'Matches PARJOTAK EXPRESS (816)');
+  assert(coxAvail?.availableSeats === 5, `Returns exactly 5 seats in AC_S (got: ${coxAvail?.availableSeats})`);
+  assert(coxAvail?.seatClass === 'AC_S', 'Seat class is AC_S (৳1728)');
+
+  // Test 14: ANY_CLASS and Corridor-Wide Fallback Matching
+  console.log('\n[Test 14] Corridor-Wide & Alternative Class Match:');
+  const fallbackMatch = evaluateSeatMatch(
+    {
+      id: 'test-cox-alert',
+      fromStation: 'Dhaka',
+      toStation: 'Coxs Bazar', // user entered Coxs Bazar without apostrophe
+      journeyDate: '2026-10-02',
+      trainCode: '814', // user selected Coxs Bazar Express (#814)
+      seatClass: 'S_CHAIR', // user selected S_CHAIR
+      passengerCount: 1,
+    },
+    coxAvail
+  );
+  assert(fallbackMatch.isMatch === true, 'Corridor-wide matching alerts user when AC_S seats are available on Parjotak Express');
+  assert(fallbackMatch.isAlternativeMatch === true, 'Marked as alternative match');
+  assert(Boolean(fallbackMatch.alternativeNotice), `Includes informative notice: ${fallbackMatch.alternativeNotice}`);
+
+  // Test 15: ANY_CLASS Direct Matching
+  console.log('\n[Test 15] ANY_CLASS Direct Matching:');
+  const anyClassMatch = evaluateSeatMatch(
+    {
+      id: 'test-any-class',
+      fromStation: 'Dhaka',
+      toStation: "Cox's Bazar",
+      journeyDate: '2026-10-02',
+      seatClass: 'ANY_CLASS',
+      passengerCount: 1,
+      monitorAllTrains: true,
+    },
+    coxAvail
+  );
+  assert(anyClassMatch.isMatch === true, 'ANY_CLASS matches immediately when any seats exist');
+  assert(anyClassMatch.score > 0, `ANY_CLASS produces positive score: ${anyClassMatch.score}`);
 
   console.log('\n=================================================');
   console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);

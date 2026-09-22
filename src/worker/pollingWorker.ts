@@ -91,7 +91,8 @@ export async function executeAlertScan(
       if (match.isMatch && match.availability) {
         seatsFoundCount++;
         const seatsDesc = (match.availability.seatNumbers || []).join(', ') || `${match.availability.availableSeats} seats`;
-        const historyText = `${timeStr} BST — ⚡ SEAT FOUND (${match.availability.availableSeats} seats in ${alert.seatClass}, ${match.availability.coach || 'Coach'}: ${seatsDesc})`;
+        const noticeStr = match.alternativeNotice ? ` [${match.alternativeNotice}]` : '';
+        const historyText = `${timeStr} BST — ⚡ SEAT FOUND (${match.availability.availableSeats} seats in ${match.availability.seatClass}, ${match.availability.coach || 'Coach'}: ${seatsDesc})${noticeStr}`;
 
         const newEntry: ScanHistoryEntry = {
           timestamp: timeStr,
@@ -127,7 +128,7 @@ export async function executeAlertScan(
             fromStation: alert.fromStation,
             toStation: alert.toStation,
             journeyDate: alert.journeyDate,
-            seatClass: alert.seatClass,
+            seatClass: match.availability.seatClass,
             seats: candidateSeats,
             score: match.score,
             telegramChatId: alert.telegramChatId,

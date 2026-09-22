@@ -4,6 +4,7 @@ export interface RouteFare {
   shovonChair: number;
   snigdha: number;
   acBerth: number;
+  acSeat?: number;
 }
 
 export const STATION_FARES: RouteFare[] = [
@@ -12,7 +13,8 @@ export const STATION_FARES: RouteFare[] = [
   { from: "Sylhet", to: "Khulna", shovonChair: 620, snigdha: 1190, acBerth: 1785 },
   { from: "Dhaka", to: "Chittagong", shovonChair: 405, snigdha: 777, acBerth: 1196 },
   { from: "Dhaka", to: "Rajshahi", shovonChair: 375, snigdha: 720, acBerth: 1080 },
-  { from: "Dhaka", to: "Coxs Bazar", shovonChair: 695, snigdha: 1325, acBerth: 1985 },
+  { from: "Dhaka", to: "Cox's Bazar", shovonChair: 754, snigdha: 1443, acBerth: 2050, acSeat: 1728 },
+  { from: "Dhaka", to: "Coxs Bazar", shovonChair: 754, snigdha: 1443, acBerth: 2050, acSeat: 1728 },
   { from: "Dhaka", to: "Khulna", shovonChair: 505, snigdha: 966, acBerth: 1450 },
   { from: "Dhaka", to: "Rangpur", shovonChair: 505, snigdha: 966, acBerth: 1450 },
   { from: "Dhaka", to: "Mymensingh", shovonChair: 150, snigdha: 290, acBerth: 435 },
@@ -20,31 +22,34 @@ export const STATION_FARES: RouteFare[] = [
   { from: "Dhaka", to: "Cumilla", shovonChair: 210, snigdha: 405, acBerth: 610 },
   { from: "Dhaka", to: "Sreemangal", shovonChair: 265, snigdha: 510, acBerth: 765 },
   { from: "Chittagong", to: "Sylhet", shovonChair: 420, snigdha: 805, acBerth: 1240 },
+  { from: "Chittagong", to: "Cox's Bazar", shovonChair: 250, snigdha: 470, acBerth: 710 },
   { from: "Chittagong", to: "Coxs Bazar", shovonChair: 250, snigdha: 470, acBerth: 710 },
 ];
 
 /**
  * Calculates estimated Bangladesh Railway fare based on origin, destination, and seat class.
- * Case-insensitive and bidirectional.
+ * Case-insensitive, apostrophe-resilient, and bidirectional.
  */
 export function getFareForRoute(from: string, to: string, seatClass: string): number {
   if (!from || !to) return 350;
 
-  const normalizedFrom = from.trim().toLowerCase();
-  const normalizedTo = to.trim().toLowerCase();
+  const clean = (s: string) => s.toLowerCase().replace(/['\s-]/g, '');
+  const cleanFrom = clean(from);
+  const cleanTo = clean(to);
 
   const match = STATION_FARES.find(
     (r) =>
-      (r.from.toLowerCase() === normalizedFrom && r.to.toLowerCase() === normalizedTo) ||
-      (r.from.toLowerCase() === normalizedTo && r.to.toLowerCase() === normalizedFrom)
+      (clean(r.from) === cleanFrom && clean(r.to) === cleanTo) ||
+      (clean(r.from) === cleanTo && clean(r.to) === cleanFrom)
   );
 
-  const normalizedClass = seatClass.trim().toUpperCase().replace(/[\s-]/g, '_');
+  const normalizedClass = (seatClass || '').trim().toUpperCase().replace(/[\s-]/g, '_');
   const baseRate = match ? match.shovonChair : 350;
 
+  if (normalizedClass === 'ANY_CLASS') return baseRate;
   if (normalizedClass === 'SNIGDHA') return match ? match.snigdha : Math.round(baseRate * 1.9);
   if (normalizedClass === 'AC_BERTH' || normalizedClass === 'AC_B') return match ? match.acBerth : Math.round(baseRate * 2.85);
-  if (normalizedClass === 'AC_S' || normalizedClass === 'AC_SEAT') return Math.round(baseRate * 2.2);
+  if (normalizedClass === 'AC_S' || normalizedClass === 'AC_SEAT') return match?.acSeat || Math.round(baseRate * 2.2);
   if (normalizedClass === 'F_BERTH') return Math.round(baseRate * 1.6);
   if (normalizedClass === 'F_SEAT') return Math.round(baseRate * 1.3);
   if (normalizedClass === 'F_CHAIR') return Math.round(baseRate * 1.25);

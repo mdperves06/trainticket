@@ -32,8 +32,8 @@ export default function CreateAlertPage() {
   const router = useRouter();
 
   // Step 1: Route & Date
-  const [fromStation, setFromStation] = useState('Sylhet');
-  const [toStation, setToStation] = useState('Dhaka');
+  const [fromStation, setFromStation] = useState('Dhaka');
+  const [toStation, setToStation] = useState("Cox's Bazar");
   const [journeyDate, setJourneyDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -45,10 +45,10 @@ export default function CreateAlertPage() {
   const [searchingTrains, setSearchingTrains] = useState(false);
   const [availableTrains, setAvailableTrains] = useState<TrainInfo[]>([]);
   const [selectedTrain, setSelectedTrain] = useState<TrainInfo | null>(null);
-  const [monitorAllTrains, setMonitorAllTrains] = useState(false);
+  const [monitorAllTrains, setMonitorAllTrains] = useState(true);
 
   // Step 3: Class, Fares & Location-based Pricing
-  const [seatClass, setSeatClass] = useState('S_CHAIR');
+  const [seatClass, setSeatClass] = useState('ANY_CLASS');
   const [passengerCount, setPassengerCount] = useState(1);
   const [preferredCoach, setPreferredCoach] = useState('');
   const [preferWindow, setPreferWindow] = useState(true);
@@ -112,8 +112,8 @@ export default function CreateAlertPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!hasSearchedTrains) {
-      setError('Please search and select a train first in Step 1 & 2.');
+    if (!monitorAllTrains && !hasSearchedTrains) {
+      setError('Please search and select a train first in Step 1 & 2, or choose "Monitor All Trains on Route".');
       return;
     }
 

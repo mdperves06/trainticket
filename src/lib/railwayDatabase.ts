@@ -333,51 +333,52 @@ export const BANGLADESH_TRAIN_DATABASE: TrainSchedule[] = [
     fares: { S_CHAIR: 425, SNIGDHA: 810, AC_B: 1215 },
   },
 
-  // --- DHAKA <-> COXS BAZAR ---
+  // --- DHAKA <-> COX'S BAZAR ---
   {
     trainNumber: '814',
-    trainName: 'Coxs Bazar Express',
+    trainName: 'COXS BAZAR EXPRESS',
     fromStation: 'DHAKA',
-    toStation: 'COXS BAZAR',
+    toStation: "Cox's Bazar",
     departureTime: '10:30 PM',
-    arrivalTime: '06:40 AM',
+    arrivalTime: '07:20 AM',
     offDay: 'Monday',
-    classes: ['S_CHAIR', 'SNIGDHA', 'AC_B'],
-    fares: { S_CHAIR: 695, SNIGDHA: 1325, AC_B: 1985 },
+    classes: ['AC_S', 'AC_B', 'SNIGDHA', 'S_CHAIR'],
+    fares: { AC_S: 1728, AC_B: 2050, SNIGDHA: 1443, S_CHAIR: 754 },
   },
   {
     trainNumber: '813',
-    trainName: 'Coxs Bazar Express',
-    fromStation: 'COXS BAZAR',
+    trainName: 'COXS BAZAR EXPRESS',
+    fromStation: "Cox's Bazar",
     toStation: 'DHAKA',
     departureTime: '12:30 PM',
     arrivalTime: '09:10 PM',
     offDay: 'Monday',
-    classes: ['S_CHAIR', 'SNIGDHA', 'AC_B'],
-    fares: { S_CHAIR: 695, SNIGDHA: 1325, AC_B: 1985 },
+    classes: ['AC_S', 'AC_B', 'SNIGDHA', 'S_CHAIR'],
+    fares: { AC_S: 1728, AC_B: 2050, SNIGDHA: 1443, S_CHAIR: 754 },
   },
   {
     trainNumber: '816',
-    trainName: 'Parjotok Express',
+    trainName: 'PARJOTAK EXPRESS',
     fromStation: 'DHAKA',
-    toStation: 'COXS BAZAR',
+    toStation: "Cox's Bazar",
     departureTime: '06:15 AM',
-    arrivalTime: '03:00 PM',
+    arrivalTime: '02:40 PM',
     offDay: 'Sunday',
-    classes: ['S_CHAIR', 'SNIGDHA', 'AC_B'],
-    fares: { S_CHAIR: 695, SNIGDHA: 1325, AC_B: 1985 },
+    classes: ['AC_S', 'SNIGDHA', 'S_CHAIR'],
+    fares: { AC_S: 1728, SNIGDHA: 1443, S_CHAIR: 754 },
   },
   {
     trainNumber: '815',
-    trainName: 'Parjotok Express',
-    fromStation: 'COXS BAZAR',
+    trainName: 'PARJOTAK EXPRESS',
+    fromStation: "Cox's Bazar",
     toStation: 'DHAKA',
     departureTime: '08:00 PM',
     arrivalTime: '04:30 AM',
     offDay: 'Sunday',
-    classes: ['S_CHAIR', 'SNIGDHA', 'AC_B'],
-    fares: { S_CHAIR: 695, SNIGDHA: 1325, AC_B: 1985 },
+    classes: ['AC_S', 'SNIGDHA', 'S_CHAIR'],
+    fares: { AC_S: 1728, SNIGDHA: 1443, S_CHAIR: 754 },
   },
+
 
   // --- DHAKA <-> KHULNA ---
   {
@@ -432,7 +433,7 @@ export const BANGLADESH_STATIONS = [
   'Sylhet',
   'Rajshahi',
   'Khulna',
-  'Coxs Bazar',
+  "Cox's Bazar",
   'Cumilla',
   'Brahmanbaria',
   'Sreemangal',
@@ -461,10 +462,11 @@ export const BANGLADESH_STATIONS = [
 ];
 
 export const BANGLADESH_CLASSES = [
+  { code: 'ANY_CLASS', name: '⚡ Any Available Class (যেকোনো ক্লাস)' },
   { code: 'S_CHAIR', name: 'Shovon Chair (শোভন চেয়ার)' },
   { code: 'SNIGDHA', name: 'Snigdha / AC Chair (স্নিগ্ধা)' },
-  { code: 'AC_B', name: 'AC Berth (এসি বাথ)' },
   { code: 'AC_S', name: 'AC Seat (এসি সিট)' },
+  { code: 'AC_B', name: 'AC Berth (এসি বাথ)' },
   { code: 'F_BERTH', name: 'First Class Berth (প্রথম বার্থ)' },
   { code: 'F_SEAT', name: 'First Class Seat (প্রথম সিট)' },
   { code: 'F_CHAIR', name: 'First Class Chair (প্রথম চেয়ার)' },
@@ -484,8 +486,8 @@ export function normalizeStation(name: string): string {
   if (clean.includes('DHAKA') || clean.includes('DAKA') || clean.includes('KAMALAPUR') || clean.includes('AIRPORT') || clean.includes('CANTONMENT')) {
     return 'DHAKA';
   }
-  if (clean.includes('COX') || clean.includes('COXS BAZAR') || clean.includes('COXSBAZAR')) {
-    return 'COXS BAZAR';
+  if (clean.includes('COX')) {
+    return "Cox's Bazar";
   }
   if (clean.includes('SYLHET')) return 'SYLHET';
   if (clean.includes('RAJSHAHI')) return 'RAJSHAHI';
@@ -524,6 +526,7 @@ export function normalizeStation(name: string): string {
 export function normalizeClass(cls: string): string {
   if (!cls) return 'S_CHAIR';
   const clean = cls.trim().toUpperCase().replace(/[\s-]/g, '_');
+  if (clean === 'ANY_CLASS' || clean.includes('ANY')) return 'ANY_CLASS';
   if (clean.includes('SHOVON_CHAIR') || clean.includes('SHOVAN_CHAIR') || clean.includes('S_CHAIR') || clean === 'S-CHAIR') return 'S_CHAIR';
   if (clean === 'SHOVON' || clean === 'SHOVAN' || clean === 'SHOBHON') return 'SHOVON';
   if (clean.includes('SNIGDHA')) return 'SNIGDHA';
@@ -535,6 +538,7 @@ export function normalizeClass(cls: string): string {
   if (clean.includes('SHULOV') || clean.includes('SULOV')) return 'SHULOV';
   return clean;
 }
+
 
 
 /**
