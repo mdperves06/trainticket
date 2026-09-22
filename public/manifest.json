@@ -1,0 +1,18 @@
+{
+  "name": "Railway Smart Booking Assistant",
+  "short_name": "RailAssistant",
+  "description": "Smart seat tracker, cancellation monitor, and release alert assistant for Bangladesh Railway.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

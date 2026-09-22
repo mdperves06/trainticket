@@ -1,0 +1,32 @@
+// Prisma schema for Railway Smart Booking Assistant
+// Easily switchable from sqlite to postgresql by updating provider and DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Alert {
+  id              String    @id @default(uuid())
+  fromStation     String
+  toStation       String
+  journeyDate     String    // Format: YYYY-MM-DD
+  trainName       String?
+  trainCode       String?
+  seatClass       String    // AC_B, SNIGDHA, S_CHAIR, etc.
+  passengerCount  Int       @default(1)
+  preferredCoach  String?
+  requireAdjacent Boolean   @default(false)
+  preferWindow    Boolean   @default(false)
+  avoidSeats      String?   // Comma-separated seat identifiers to avoid (e.g., "KA-1,KA-2")
+  telegramChatId  String?
+  status          String    @default("SCHEDULED") // SCHEDULED, MONITORING, SEAT_FOUND, COMPLETED, EXPIRED
+  isActive        Boolean   @default(true)
+  lastCheckedAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}

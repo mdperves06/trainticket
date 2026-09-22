@@ -1,0 +1,32 @@
+{
+  "name": "trainticket",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "worker": "tsx src/worker/scheduler.ts",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.15.0",
+    "axios": "^1.7.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.395.0",
+    "next": "^14.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "prisma": "^5.15.0",
+    "tsx": "^4.15.6",
+    "typescript": "^5.4.5"
+  }
+}
