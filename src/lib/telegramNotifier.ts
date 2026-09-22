@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { CandidateSeat } from './seatScorer';
+import { generateDeepSearchUrl } from './bookmarkletGenerator';
 
 export interface TelegramAlertPayload {
   trainName: string;
@@ -12,6 +13,10 @@ export interface TelegramAlertPayload {
   score: number;
   telegramChatId?: string | null;
 }
+
+// In-memory deduplication cache: fingerprint -> timestamp
+const sentFingerprints = new Map<string, number>();
+const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Dispatches an urgent Telegram alert with an inline link to Bangladesh Railway booking portal.
@@ -32,9 +37,25 @@ export async function sendTelegramNotification(
     };
   }
 
+  // Deduplication check
+  const fingerprint = `${chatId}_${payload.trainCode || payload.trainName}_${payload.seatClass}_${payload.journeyDate}`;
+  const now = Date.now();
+  const lastSent = sentFingerprints.get(fingerprint);
+  if (lastSent && now - lastSent < DEDUPLICATION_WINDOW_MS) {
+    console.log(`[TelegramNotifier] Suppressing duplicate notification for ${fingerprint}`);
+    return { success: true };
+  }
+
   const seatsList = payload.seats
     .map((s) => `• Coach *${s.coach}*, Seat *${s.seatNumber}* ${s.isWindow ? '🪟 (Window)' : ''}`)
     .join('\n');
+
+  const portalSearchUrl = generateDeepSearchUrl(
+    payload.fromStation,
+    payload.toStation,
+    payload.journeyDate,
+    payload.seatClass
+  );
 
   const text = `🚨 *RAILWAY SEAT FOUND!* 🚨
 ━━━━━━━━━━━━━━━━━━━━
@@ -56,7 +77,7 @@ Automation has secured availability monitoring. Complete your OTP verification, 
       [
         {
           text: '⚡ Open Railway Booking Portal',
-          url: 'https://eticket.railway.gov.bd',
+          url: portalSearchUrl,
         },
       ],
     ],
@@ -72,6 +93,7 @@ Automation has secured availability monitoring. Complete your OTP verification, 
     });
 
     if (res.data?.ok) {
+      sentFingerprints.set(fingerprint, now);
       console.log(`[TelegramNotifier] Notification dispatched to chat ${chatId}`);
       return { success: true, messageId: res.data.result?.message_id };
     } else {
@@ -83,3 +105,4 @@ Automation has secured availability monitoring. Complete your OTP verification, 
     return { success: false, error: message };
   }
 }
+

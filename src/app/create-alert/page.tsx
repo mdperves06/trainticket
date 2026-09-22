@@ -105,7 +105,8 @@ export default function CreateAlertPage() {
         setAvailableTrains(data.trains);
         setHasSearchedTrains(true);
         if (data.trains.length > 0 && !monitorAllTrains) {
-          setSelectedTrain(data.trains[0]);
+          const firstOperating = data.trains.find((t: TrainInfo) => !t.isOffDay) || data.trains[0];
+          setSelectedTrain(firstOperating);
         }
       } else {
         setError(data.error || 'Failed to search trains for this route.');
@@ -127,8 +128,8 @@ export default function CreateAlertPage() {
       return;
     }
 
-    if (!monitorAllTrains && !selectedTrain) {
-      setError('Please select a specific train or choose "Monitor All Trains".');
+    if (!monitorAllTrains && (!selectedTrain || selectedTrain.isOffDay)) {
+      setError('Please select an operating train (not on an off-day) or choose "Monitor All Trains".');
       return;
     }
 
@@ -198,32 +199,31 @@ export default function CreateAlertPage() {
               width: '36px',
               height: '36px',
               borderRadius: '10px',
-              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-              color: '#ffffff',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: '#ffffff',
             }}
           >
-            <Train size={20} />
+            <Sparkles size={18} />
           </div>
-          <h1 style={{ fontSize: '1.55rem' }}>Create Smart Seat Alert</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Create Smart Alert</h1>
         </div>
-
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.75rem' }}>
-          5-Step progressive configuration for Bangladesh Railway 8:00 AM BST ticket release drops and daytime cancellations.
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+          Real-time Bangladesh Railway seat tracking with deterministic prioritization & off-day detection.
         </p>
 
         {error && (
           <div
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              padding: '0.85rem 1rem',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
               color: '#fca5a5',
               fontSize: '0.85rem',
-              marginBottom: '1.5rem',
+              marginBottom: '1.25rem',
             }}
           >
             {error}
@@ -237,10 +237,10 @@ export default function CreateAlertPage() {
           <div
             style={{
               background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
               borderRadius: '14px',
               padding: '1.25rem',
-              marginBottom: '1.5rem',
+              marginBottom: '1.25rem',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -261,7 +261,7 @@ export default function CreateAlertPage() {
                 1
               </span>
               <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#f8fafc' }}>
-                Route & Journey Date
+                Route & Travel Date
               </span>
             </div>
 
@@ -404,30 +404,41 @@ export default function CreateAlertPage() {
               {!monitorAllTrains ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                   {availableTrains.map((train) => {
-                    const isSelected = selectedTrain?.trainNumber === train.trainNumber;
+                    const isOffDay = Boolean(train.isOffDay);
+                    const isSelected = selectedTrain?.trainNumber === train.trainNumber && !isOffDay;
+
                     return (
                       <div
                         key={train.trainNumber}
-                        onClick={() => setSelectedTrain(train)}
+                        onClick={() => {
+                          if (!isOffDay) {
+                            setSelectedTrain(train);
+                          }
+                        }}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '0.85rem 1rem',
                           borderRadius: '10px',
-                          border: isSelected
+                          border: isOffDay
+                            ? '1px solid rgba(239, 68, 68, 0.25)'
+                            : isSelected
                             ? '1px solid #10b981'
                             : '1px solid rgba(255, 255, 255, 0.08)',
-                          background: isSelected
+                          background: isOffDay
+                            ? 'rgba(239, 68, 68, 0.04)'
+                            : isSelected
                             ? 'rgba(16, 185, 129, 0.15)'
                             : 'rgba(10, 16, 30, 0.5)',
-                          cursor: 'pointer',
+                          cursor: isOffDay ? 'not-allowed' : 'pointer',
+                          opacity: isOffDay ? 0.65 : 1,
                           transition: 'all 0.2s ease',
                         }}
                       >
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontWeight: 700, color: '#f8fafc' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, color: isOffDay ? '#94a3b8' : '#f8fafc' }}>
                               {train.trainName}
                             </span>
                             <span
@@ -441,25 +452,45 @@ export default function CreateAlertPage() {
                             >
                               #{train.trainNumber}
                             </span>
+
+                            {isOffDay && (
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: '#f87171',
+                                  background: 'rgba(239, 68, 68, 0.15)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                ⛔ OFF-DAY ({train.offDay})
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                             Departs: {train.departureTime} • Arrives: {train.arrivalTime} ({train.duration})
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
                             Classes: {train.classes.join(', ')}
                           </span>
-                          <div
-                            style={{
-                              width: '18px',
-                              height: '18px',
-                              borderRadius: '50%',
-                              border: isSelected ? '5px solid #10b981' : '2px solid var(--border-glass)',
-                              background: '#070b14',
-                            }}
-                          />
+                          {!isOffDay ? (
+                            <div
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '50%',
+                                border: isSelected ? '5px solid #10b981' : '2px solid var(--border-glass)',
+                                background: '#070b14',
+                              }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: '#ef4444' }}>⛔</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -476,7 +507,7 @@ export default function CreateAlertPage() {
                     color: '#6ee7b7',
                   }}
                 >
-                  ✓ <strong>Route-Locked Mode Active:</strong> Any operating train on this route ({fromStation} ➔ {toStation}) with matching seats will trigger the alert!
+                  ✓ <strong>Route-Locked Mode Active:</strong> Any operating train on this route ({fromStation} ➔ {toStation}) with matching seats will trigger the alert! (Off-day trains automatically skipped)
                 </div>
               )}
             </div>

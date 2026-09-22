@@ -23,8 +23,10 @@ import {
   Volume2,
   Smartphone,
   Send,
+  ExternalLink,
 } from 'lucide-react';
 import { ScanHistoryEntry } from '@/worker/pollingWorker';
+import { generateDeepSearchUrl } from '@/lib/bookmarkletGenerator';
 
 export interface AlertData {
   id: string;
@@ -333,7 +335,32 @@ export default function AlertCard({
           paddingTop: '0.85rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {/* ⚡ Instant Search Link */}
+          <button
+            onClick={() => {
+              const url = generateDeepSearchUrl(
+                alert.fromStation,
+                alert.toStation,
+                alert.journeyDate,
+                alert.seatClass
+              );
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+            className="btn btn-secondary"
+            style={{
+              fontSize: '0.775rem',
+              padding: '0.4rem 0.75rem',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              color: '#6ee7b7',
+              background: 'rgba(16, 185, 129, 0.1)',
+            }}
+            title="Open official Bangladesh Railway search page for this route and date"
+          >
+            <ExternalLink size={13} color="#10b981" />
+            <span>⚡ Instant Search Link</span>
+          </button>
+
           {/* ⚡ Scan Now */}
           {onTriggerTargetedScan && (
             <button
@@ -413,14 +440,21 @@ export default function AlertCard({
             {showHistory ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
-          {/* 🗑️ Delete / Stop */}
+          {/* 🛑 Stop Alert (Delete) */}
           <button
             onClick={() => onDelete(alert.id)}
             className="btn btn-danger"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+            style={{
+              fontSize: '0.75rem',
+              padding: '0.35rem 0.65rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
             title="Completely stop monitoring and delete alert"
           >
             <Trash2 size={13} />
+            <span>🛑 Stop Alert</span>
           </button>
         </div>
       </div>

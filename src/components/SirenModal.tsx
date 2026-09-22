@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { VolumeX, ExternalLink, Zap, Ban, CheckCircle2 } from 'lucide-react';
+import { VolumeX, ExternalLink, Zap, Ban, CheckCircle2, Copy } from 'lucide-react';
 import alarmEngine from '@/lib/alarmEngine';
 import { AlertData } from './AlertCard';
+import { generateDeepSearchUrl, copyToClipboard } from '@/lib/bookmarkletGenerator';
 
 interface SirenModalProps {
   alert: AlertData;
@@ -17,6 +18,7 @@ export default function SirenModal({
   onStopAndDismiss,
 }: SirenModalProps) {
   const [isSilenced, setIsSilenced] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
 
   useEffect(() => {
     // Only start siren if alert has enableSiren true
@@ -40,17 +42,25 @@ export default function SirenModal({
     onStopAndDismiss();
   };
 
-  const handleOpenPortal = () => {
+  const handleOpenPortal = async () => {
     alarmEngine.stop();
     setIsSilenced(true);
-    // Deep link with route and date parameters
-    const portalUrl = `https://eticket.railway.gov.bd?from=${encodeURIComponent(
-      alert.fromStation
-    )}&to=${encodeURIComponent(alert.toStation)}&date=${encodeURIComponent(
-      alert.journeyDate
-    )}&class=${encodeURIComponent(alert.seatClass)}`;
+
+    // Auto-copy passenger & booking details to clipboard
+    const copyText = `ROUTE: ${alert.fromStation} -> ${alert.toStation} | DATE: ${alert.journeyDate} | CLASS: ${alert.seatClass} | PASSENGERS: ${alert.passengerCount}${alert.preferredCoach ? ` | COACH: ${alert.preferredCoach}` : ''}`;
+    await copyToClipboard(copyText);
+    setCopiedToast(true);
+
+    // Deep link with search parameters
+    const portalUrl = generateDeepSearchUrl(
+      alert.fromStation,
+      alert.toStation,
+      alert.journeyDate,
+      alert.seatClass
+    );
     window.open(portalUrl, '_blank', 'noopener,noreferrer');
   };
+
 
   // Parse match details if available
   let matchInfo: {
@@ -241,6 +251,26 @@ export default function SirenModal({
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          {copiedToast && (
+            <div
+              style={{
+                fontSize: '0.8rem',
+                color: '#6ee7b7',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid #10b981',
+                padding: '0.45rem 0.8rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+              }}
+            >
+              <CheckCircle2 size={15} color="#10b981" />
+              <span>📋 Copied Passenger Info to Clipboard! Opening official portal...</span>
+            </div>
+          )}
+
           <button
             onClick={handleOpenPortal}
             className="btn btn-primary"
@@ -253,8 +283,9 @@ export default function SirenModal({
             }}
           >
             <ExternalLink size={18} />
-            <span>↗ Open Official Railway Portal</span>
+            <span>↗ Go to Official Booking Flow</span>
           </button>
+
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
             <button

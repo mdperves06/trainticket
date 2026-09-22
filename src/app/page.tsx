@@ -5,6 +5,7 @@ import Link from 'next/link';
 import CountdownTimer from '@/components/CountdownTimer';
 import AlertCard, { AlertData } from '@/components/AlertCard';
 import SirenModal from '@/components/SirenModal';
+import QuickFillModal from '@/components/QuickFillModal';
 import {
   PlusCircle,
   RefreshCw,
@@ -15,6 +16,7 @@ import {
   Activity,
   ShieldCheck,
   AlertCircle,
+  Bookmark,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -23,6 +25,8 @@ export default function Dashboard() {
   const [scanningAll, setScanningAll] = useState(false);
   const [activeSirenAlert, setActiveSirenAlert] = useState<AlertData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [showQuickFill, setShowQuickFill] = useState(false);
+
 
   // Track dismissed sirens in current session
   const [dismissedSirenIds, setDismissedSirenIds] = useState<Set<string>>(new Set());
@@ -298,6 +302,16 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Speed-Booking & Auto-Fill Suite Modal */}
+      <QuickFillModal
+        isOpen={showQuickFill}
+        onClose={() => setShowQuickFill(false)}
+        defaultFrom={alerts[0]?.fromStation || 'Chattogram'}
+        defaultTo={alerts[0]?.toStation || 'Dhaka'}
+        defaultDate={alerts[0]?.journeyDate}
+        defaultClass={alerts[0]?.seatClass || 'S_CHAIR'}
+      />
+
       {/* Countdown Timer to 8:00 AM BST */}
       <CountdownTimer />
 
@@ -323,6 +337,20 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <button
+            onClick={() => setShowQuickFill(true)}
+            className="btn btn-secondary"
+            style={{
+              fontSize: '0.85rem',
+              borderColor: 'rgba(59, 130, 246, 0.4)',
+              color: '#93c5fd',
+            }}
+            title="Open 1-Tap Mobile Bookmarklet & Speed-Booking Suite"
+          >
+            <Bookmark size={15} />
+            <span>🚀 Speed Booking</span>
+          </button>
+
           <button
             onClick={handleSimulateDrop}
             disabled={scanningAll}
