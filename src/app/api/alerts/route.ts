@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
       preferWindow,
       avoidSeats,
       telegramChatId,
+      monitorAllTrains,
+      enableSiren,
+      enableVibration,
+      enableTelegram,
     } = body;
 
     if (!fromStation || !toStation || !journeyDate || !seatClass) {
@@ -56,8 +60,13 @@ export async function POST(req: NextRequest) {
         preferWindow: Boolean(preferWindow),
         avoidSeats: avoidSeats ? avoidSeats.trim().toUpperCase() : null,
         telegramChatId: telegramChatId ? telegramChatId.trim() : null,
-        status: 'SCHEDULED',
+        status: 'MONITORING', // When user clicks "Start Monitoring", starts in MONITORING
         isActive: true,
+        monitorAllTrains: Boolean(monitorAllTrains),
+        enableSiren: enableSiren !== undefined ? Boolean(enableSiren) : true,
+        enableVibration: enableVibration !== undefined ? Boolean(enableVibration) : true,
+        enableTelegram: enableTelegram !== undefined ? Boolean(enableTelegram) : true,
+        scanHistory: JSON.stringify([]),
       },
     });
 
@@ -91,7 +100,22 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, isActive, status } = body;
+    const {
+      id,
+      isActive,
+      status,
+      seatClass,
+      passengerCount,
+      preferredCoach,
+      preferWindow,
+      requireAdjacent,
+      avoidSeats,
+      telegramChatId,
+      monitorAllTrains,
+      enableSiren,
+      enableVibration,
+      enableTelegram,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Alert ID is required' }, { status: 400 });
@@ -100,6 +124,17 @@ export async function PATCH(req: NextRequest) {
     const dataToUpdate: Record<string, unknown> = {};
     if (typeof isActive === 'boolean') dataToUpdate.isActive = isActive;
     if (typeof status === 'string') dataToUpdate.status = status;
+    if (typeof seatClass === 'string') dataToUpdate.seatClass = seatClass.toUpperCase();
+    if (typeof passengerCount === 'number') dataToUpdate.passengerCount = passengerCount;
+    if (preferredCoach !== undefined) dataToUpdate.preferredCoach = preferredCoach ? preferredCoach.toUpperCase() : null;
+    if (typeof preferWindow === 'boolean') dataToUpdate.preferWindow = preferWindow;
+    if (typeof requireAdjacent === 'boolean') dataToUpdate.requireAdjacent = requireAdjacent;
+    if (avoidSeats !== undefined) dataToUpdate.avoidSeats = avoidSeats;
+    if (telegramChatId !== undefined) dataToUpdate.telegramChatId = telegramChatId;
+    if (typeof monitorAllTrains === 'boolean') dataToUpdate.monitorAllTrains = monitorAllTrains;
+    if (typeof enableSiren === 'boolean') dataToUpdate.enableSiren = enableSiren;
+    if (typeof enableVibration === 'boolean') dataToUpdate.enableVibration = enableVibration;
+    if (typeof enableTelegram === 'boolean') dataToUpdate.enableTelegram = enableTelegram;
 
     const updated = await prisma.alert.update({
       where: { id },

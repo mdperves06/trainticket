@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runMonitoringCycle, getDhakaTime } from '@/worker/scheduler';
+import { executeAlertScan } from '@/worker/pollingWorker';
+import { getDhakaTime } from '@/worker/scheduler';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    const alertId = searchParams.get('alertId') || undefined;
     const simulateDrop = searchParams.get('simulateDrop') === 'true';
 
     const dhakaTime = getDhakaTime();
-    const result = await runMonitoringCycle({ forceSeats: simulateDrop });
+    const result = await executeAlertScan(alertId, { forceDrop: simulateDrop });
 
     return NextResponse.json({
       success: true,

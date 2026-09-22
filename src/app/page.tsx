@@ -1,25 +1,40 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import CountdownTimer from '@/components/CountdownTimer';
 import AlertCard, { AlertData } from '@/components/AlertCard';
-import SirenBanner from '@/components/SirenBanner';
-import { PlusCircle, RefreshCw, Zap, Bell, CheckCircle2, ShieldCheck } from 'lucide-react';
+import SirenModal from '@/components/SirenModal';
+import {
+  PlusCircle,
+  RefreshCw,
+  Zap,
+  Bell,
+  CheckCircle2,
+  Pause,
+  Activity,
+  ShieldCheck,
+  AlertCircle,
+} from 'lucide-react';
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState<AlertData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  const [scanningAll, setScanningAll] = useState(false);
   const [activeSirenAlert, setActiveSirenAlert] = useState<AlertData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
+  // Track dismissed sirens in current session
   const [dismissedSirenIds, setDismissedSirenIds] = useState<Set<string>>(new Set());
+
+  // Polling interval ref
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchAlerts = useCallback(async () => {
     try {
       const res = await fetch('/api/alerts');
       const data = await res.json();
+
       if (data.success && Array.isArray(data.alerts)) {
         setAlerts(data.alerts);
 
@@ -27,6 +42,7 @@ export default function Dashboard() {
         const found = data.alerts.find(
           (a: AlertData) => a.status === 'SEAT_FOUND' && a.isActive && !dismissedSirenIds.has(a.id)
         );
+
         if (found) {
           setActiveSirenAlert(found);
         }
@@ -37,6 +53,7 @@ export default function Dashboard() {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
+            hour12: true,
           })
         );
       }
@@ -47,22 +64,141 @@ export default function Dashboard() {
     }
   }, [dismissedSirenIds]);
 
+  // Initial fetch on mount
   useEffect(() => {
     fetchAlerts();
-    // Poll alerts every 8 seconds
-    const interval = setInterval(fetchAlerts, 8000);
-    return () => clearInterval(interval);
   }, [fetchAlerts]);
 
-  const handleDismissSiren = (id: string) => {
-    setDismissedSirenIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    setActiveSirenAlert(null);
+  // Controlled Background Polling:
+  // ONLY run timer if there is at least one active alert with status === 'MONITORING'
+  useEffect(() => {
+    const monitoringAlerts = alerts.filter((a) => a.isActive && a.status === 'MONITORING');
+
+    if (monitoringAlerts.length > 0) {
+      // Set 30-second controlled polling
+      pollingRef.current = setInterval(() => {
+        fetch('/api/check', { method: 'POST' })
+          .then(() => fetchAlerts())
+          .catch((err) => console.error('Background poll failed:', err));
+      }, 30000);
+    } else {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [alerts, fetchAlerts]);
+
+  // Global Status Evaluation
+  const activeAlerts = alerts.filter((a) => a.isActive);
+  const monitoringCount = alerts.filter((a) => a.isActive && a.status === 'MONITORING').length;
+  const pausedCount = alerts.filter((a) => a.isActive && a.status === 'PAUSED').length;
+  const seatsFoundCount = alerts.filter((a) => a.status === 'SEAT_FOUND').length;
+
+  const getGlobalStatusBadge = () => {
+    if (activeAlerts.length === 0) {
+      return (
+        <span
+          className="badge"
+          style={{
+            background: 'rgba(16, 185, 129, 0.1)',
+            color: '#34d399',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            fontSize: '0.85rem',
+            padding: '0.35rem 0.85rem',
+          }}
+        >
+          🟢 IDLE — System Resting
+        </span>
+      );
+    }
+
+    if (monitoringCount === 0 && pausedCount > 0) {
+      return (
+        <span
+          className="badge"
+          style={{
+            background: 'rgba(100, 116, 139, 0.15)',
+            color: '#94a3b8',
+            border: '1px solid rgba(100, 116, 139, 0.3)',
+            fontSize: '0.85rem',
+            padding: '0.35rem 0.85rem',
+          }}
+        >
+          ⏸ PAUSED — No background requests
+        </span>
+      );
+    }
+
+    if (monitoringCount > 0) {
+      return (
+        <span
+          className="badge"
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#f87171',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            fontSize: '0.85rem',
+            padding: '0.35rem 0.85rem',
+          }}
+        >
+          🔴 MONITORING — Active ({monitoringCount} monitored)
+        </span>
+      );
+    }
+
+    return (
+      <span
+        className="badge"
+        style={{
+          background: 'rgba(16, 185, 129, 0.1)',
+          color: '#34d399',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          fontSize: '0.85rem',
+          padding: '0.35rem 0.85rem',
+        }}
+      >
+        🟢 IDLE — System Resting
+      </span>
+    );
   };
 
+  // Targeted single scan for specific alert
+  const handleTargetedScan = async (alertId: string) => {
+    try {
+      const res = await fetch(`/api/check?alertId=${encodeURIComponent(alertId)}`, {
+        method: 'POST',
+      });
+      await res.json();
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Targeted scan failed:', err);
+    }
+  };
+
+  // Toggle Pause / Resume
+  const handleTogglePause = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'PAUSED' ? 'MONITORING' : 'PAUSED';
+    try {
+      await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: nextStatus }),
+      });
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Toggle pause failed:', err);
+    }
+  };
+
+  // Reset alert back to MONITORING
   const handleResetStatus = async (id: string) => {
     try {
       await fetch('/api/alerts', {
@@ -70,7 +206,6 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: 'MONITORING' }),
       });
-      // Allow future sirens for this alert if seats drop again
       setDismissedSirenIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -82,72 +217,91 @@ export default function Dashboard() {
     }
   };
 
-  const handleTriggerManualCheck = async () => {
-    setScanning(true);
-    try {
-      const res = await fetch('/api/check', { method: 'POST' });
-      await res.json();
-      await fetchAlerts();
-    } catch (err) {
-      console.error('Manual check failed:', err);
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleSimulateDrop = async () => {
-    setScanning(true);
-    try {
-      const res = await fetch('/api/check?simulateDrop=true', { method: 'POST' });
-      await res.json();
-      await fetchAlerts();
-    } catch (err) {
-      console.error('Simulate drop failed:', err);
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleToggleActive = async (id: string, current: boolean) => {
+  // Update alert preferences
+  const handleUpdateAlert = async (id: string, updatedFields: Partial<AlertData>) => {
     try {
       await fetch('/api/alerts', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, isActive: !current }),
+        body: JSON.stringify({ id, ...updatedFields }),
       });
       await fetchAlerts();
     } catch (err) {
-      console.error('Toggle alert failed:', err);
+      console.error('Update alert failed:', err);
     }
   };
 
+  // Delete / Stop alert
   const handleDeleteAlert = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this alert?')) return;
+    if (!confirm('Are you sure you want to stop and delete this alert?')) return;
     try {
-      await fetch(`/api/alerts?id=${id}`, { method: 'DELETE' });
+      await fetch(`/api/alerts?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       await fetchAlerts();
     } catch (err) {
       console.error('Delete alert failed:', err);
     }
   };
 
-  const activeCount = alerts.filter((a) => a.isActive).length;
-  const seatsFoundCount = alerts.filter((a) => a.status === 'SEAT_FOUND').length;
+  // Siren Modal Dismissal Handlers
+  const handleSilenceSirenOnly = () => {
+    if (activeSirenAlert) {
+      setDismissedSirenIds((prev) => {
+        const next = new Set(prev);
+        next.add(activeSirenAlert.id);
+        return next;
+      });
+    }
+  };
+
+  const handleStopAndDismissAlert = async () => {
+    if (!activeSirenAlert) return;
+    const alertId = activeSirenAlert.id;
+    try {
+      await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: alertId, status: 'COMPLETED', isActive: false }),
+      });
+      setDismissedSirenIds((prev) => {
+        const next = new Set(prev);
+        next.add(alertId);
+        return next;
+      });
+      setActiveSirenAlert(null);
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Stop alert failed:', err);
+    }
+  };
+
+  // Test simulation trigger
+  const handleSimulateDrop = async () => {
+    setScanningAll(true);
+    try {
+      await fetch('/api/check?simulateDrop=true', { method: 'POST' });
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Simulate drop failed:', err);
+    } finally {
+      setScanningAll(false);
+    }
+  };
 
   return (
     <div className="container" style={{ paddingTop: '1.75rem' }}>
-      {/* Siren Emergency Modal */}
+      {/* Upgraded Siren Modal */}
       {activeSirenAlert && (
-        <SirenBanner
+        <SirenModal
           alert={activeSirenAlert}
-          onDismiss={() => handleDismissSiren(activeSirenAlert.id)}
+          onSilenceOnly={handleSilenceSirenOnly}
+          onStopAndDismiss={handleStopAndDismissAlert}
         />
       )}
 
-      {/* Hero & Countdown */}
+      {/* Countdown Timer to 8:00 AM BST */}
       <CountdownTimer />
 
-      {/* Dashboard Stats & Header */}
+      {/* Header & Global Status Indicator */}
       <div
         style={{
           display: 'flex',
@@ -159,39 +313,29 @@ export default function Dashboard() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>
-            Active Train Alerts
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
+            <h1 style={{ fontSize: '1.75rem' }}>Active Train Alerts</h1>
+            {getGlobalStatusBadge()}
+          </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Real-time monitoring for ticket drop bursts and daytime cancellations.
+            Strict Exact-Match engine. Zero background queries when idle or paused.
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <button
-            onClick={handleTriggerManualCheck}
-            disabled={scanning}
-            className="btn btn-secondary"
-            style={{ fontSize: '0.85rem' }}
-            title="Scan official availability"
-          >
-            <RefreshCw size={15} className={scanning ? 'animate-spin' : ''} />
-            <span>{scanning ? 'Scanning...' : 'Scan Now'}</span>
-          </button>
-
-          <button
             onClick={handleSimulateDrop}
-            disabled={scanning}
+            disabled={scanningAll}
             className="btn btn-secondary"
             style={{
               fontSize: '0.85rem',
               borderColor: 'rgba(16, 185, 129, 0.4)',
               color: '#34d399',
             }}
-            title="Simulate 8:00 AM BST seat drop burst to test siren & notification"
+            title="Simulate ticket release burst to verify Siren & HITL modal"
           >
             <Zap size={15} />
-            <span>Test Drop</span>
+            <span>{scanningAll ? 'Simulating...' : '⚡ Test Drop'}</span>
           </button>
 
           <Link href="/create-alert" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
@@ -205,7 +349,7 @@ export default function Dashboard() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '1rem',
           marginBottom: '1.75rem',
         }}
@@ -216,7 +360,27 @@ export default function Dashboard() {
             <Bell size={16} color="#3b82f6" />
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: '0.35rem' }}>
-            {activeCount}
+            {activeAlerts.length}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '1rem 1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monitoring</span>
+            <Activity size={16} color="#f59e0b" />
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '0.35rem' }}>
+            {monitoringCount}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '1rem 1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Paused</span>
+            <Pause size={16} color="#94a3b8" />
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#94a3b8', marginTop: '0.35rem' }}>
+            {pausedCount}
           </div>
         </div>
 
@@ -227,16 +391,6 @@ export default function Dashboard() {
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '0.35rem' }}>
             {seatsFoundCount}
-          </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '1rem 1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last Scan (BST)</span>
-            <CheckCircle2 size={16} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.5rem', color: '#cbd5e1' }}>
-            {lastUpdated ? `${lastUpdated} BST` : 'Connecting...'}
           </div>
         </div>
       </div>
@@ -275,20 +429,20 @@ export default function Dashboard() {
           >
             <Bell size={28} />
           </div>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>No Active Alerts Yet</h3>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>System Resting (0 Alerts)</h3>
           <p
             style={{
               fontSize: '0.9rem',
               color: 'var(--text-muted)',
-              maxWidth: '420px',
+              maxWidth: '440px',
               margin: '0 auto 1.5rem',
             }}
           >
-            Create your first alert to start monitoring 8:00 AM BST ticket drops and real-time seat cancellations.
+            Create an alert with your chosen route and journey date. Monitoring will only begin when you explicitly click Start Monitoring.
           </p>
           <Link href="/create-alert" className="btn btn-primary">
             <PlusCircle size={16} />
-            <span>Create Your First Alert</span>
+            <span>Create Smart Seat Alert</span>
           </Link>
         </div>
       ) : (
@@ -297,10 +451,11 @@ export default function Dashboard() {
             <AlertCard
               key={alert.id}
               alert={alert}
-              onToggleActive={handleToggleActive}
+              onTogglePause={handleTogglePause}
               onDelete={handleDeleteAlert}
-              onTriggerCheck={handleTriggerManualCheck}
+              onTriggerTargetedScan={handleTargetedScan}
               onResetStatus={handleResetStatus}
+              onUpdateAlert={handleUpdateAlert}
             />
           ))}
         </div>

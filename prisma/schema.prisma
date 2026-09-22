@@ -24,8 +24,14 @@ model Alert {
   preferWindow    Boolean   @default(false)
   avoidSeats      String?   // Comma-separated seat identifiers to avoid (e.g., "KA-1,KA-2")
   telegramChatId  String?
-  status          String    @default("SCHEDULED") // SCHEDULED, MONITORING, SEAT_FOUND, COMPLETED, EXPIRED
+  status          String    @default("IDLE") // IDLE, MONITORING, PAUSED, SEAT_FOUND, COMPLETED, EXPIRED
   isActive        Boolean   @default(true)
+  monitorAllTrains Boolean  @default(false)
+  scanHistory     String?   // JSON array of recent scan events
+  matchDetails    String?   // JSON of found seat details
+  enableSiren     Boolean   @default(true)
+  enableVibration Boolean   @default(true)
+  enableTelegram  Boolean   @default(true)
   lastCheckedAt   DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
