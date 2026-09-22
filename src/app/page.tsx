@@ -14,6 +14,8 @@ export default function Dashboard() {
   const [activeSirenAlert, setActiveSirenAlert] = useState<AlertData | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
+  const [dismissedSirenIds, setDismissedSirenIds] = useState<Set<string>>(new Set());
+
   const fetchAlerts = useCallback(async () => {
     try {
       const res = await fetch('/api/alerts');
@@ -21,9 +23,9 @@ export default function Dashboard() {
       if (data.success && Array.isArray(data.alerts)) {
         setAlerts(data.alerts);
 
-        // Check if any alert has status 'SEAT_FOUND' and siren is not already active
+        // Check if any alert has status 'SEAT_FOUND' and hasn't been dismissed by the user yet
         const found = data.alerts.find(
-          (a: AlertData) => a.status === 'SEAT_FOUND' && a.isActive
+          (a: AlertData) => a.status === 'SEAT_FOUND' && a.isActive && !dismissedSirenIds.has(a.id)
         );
         if (found) {
           setActiveSirenAlert(found);
@@ -43,7 +45,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dismissedSirenIds]);
 
   useEffect(() => {
     fetchAlerts();
@@ -52,14 +54,55 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
+  const handleDismissSiren = (id: string) => {
+    setDismissedSirenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    setActiveSirenAlert(null);
+  };
+
+  const handleResetStatus = async (id: string) => {
+    try {
+      await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'MONITORING' }),
+      });
+      // Allow future sirens for this alert if seats drop again
+      setDismissedSirenIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Reset status failed:', err);
+    }
+  };
+
   const handleTriggerManualCheck = async () => {
     setScanning(true);
     try {
       const res = await fetch('/api/check', { method: 'POST' });
-      const data = await res.json();
+      await res.json();
       await fetchAlerts();
     } catch (err) {
       console.error('Manual check failed:', err);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleSimulateDrop = async () => {
+    setScanning(true);
+    try {
+      const res = await fetch('/api/check?simulateDrop=true', { method: 'POST' });
+      await res.json();
+      await fetchAlerts();
+    } catch (err) {
+      console.error('Simulate drop failed:', err);
     } finally {
       setScanning(false);
     }
@@ -97,7 +140,7 @@ export default function Dashboard() {
       {activeSirenAlert && (
         <SirenBanner
           alert={activeSirenAlert}
-          onDismiss={() => setActiveSirenAlert(null)}
+          onDismiss={() => handleDismissSiren(activeSirenAlert.id)}
         />
       )}
 
@@ -130,9 +173,25 @@ export default function Dashboard() {
             disabled={scanning}
             className="btn btn-secondary"
             style={{ fontSize: '0.85rem' }}
+            title="Scan official availability"
           >
             <RefreshCw size={15} className={scanning ? 'animate-spin' : ''} />
             <span>{scanning ? 'Scanning...' : 'Scan Now'}</span>
+          </button>
+
+          <button
+            onClick={handleSimulateDrop}
+            disabled={scanning}
+            className="btn btn-secondary"
+            style={{
+              fontSize: '0.85rem',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              color: '#34d399',
+            }}
+            title="Simulate 8:00 AM BST seat drop burst to test siren & notification"
+          >
+            <Zap size={15} />
+            <span>Test Drop</span>
           </button>
 
           <Link href="/create-alert" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
@@ -241,6 +300,7 @@ export default function Dashboard() {
               onToggleActive={handleToggleActive}
               onDelete={handleDeleteAlert}
               onTriggerCheck={handleTriggerManualCheck}
+              onResetStatus={handleResetStatus}
             />
           ))}
         </div>

@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
+  RotateCcw,
 } from 'lucide-react';
 
 export interface AlertData {
@@ -40,6 +41,7 @@ interface AlertCardProps {
   onToggleActive: (id: string, current: boolean) => void;
   onDelete: (id: string) => void;
   onTriggerCheck?: (id: string) => void;
+  onResetStatus?: (id: string) => void;
 }
 
 export default function AlertCard({
@@ -47,6 +49,7 @@ export default function AlertCard({
   onToggleActive,
   onDelete,
   onTriggerCheck,
+  onResetStatus,
 }: AlertCardProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -266,6 +269,23 @@ export default function AlertCard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {alert.status === 'SEAT_FOUND' && onResetStatus && (
+            <button
+              onClick={() => onResetStatus(alert.id)}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.35rem 0.65rem',
+                borderColor: '#10b981',
+                color: '#6ee7b7',
+              }}
+              title="Reset alert back to monitoring"
+            >
+              <RotateCcw size={13} />
+              <span>Reset</span>
+            </button>
+          )}
+
           {onTriggerCheck && alert.isActive && (
             <button
               onClick={() => onTriggerCheck(alert.id)}

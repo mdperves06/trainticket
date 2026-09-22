@@ -1,17 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { runMonitoringCycle, getDhakaTime } from '@/worker/scheduler';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const simulateDrop = searchParams.get('simulateDrop') === 'true';
+
     const dhakaTime = getDhakaTime();
-    const result = await runMonitoringCycle();
+    const result = await runMonitoringCycle({ forceSeats: simulateDrop });
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       dhakaTime,
+      simulateDrop,
       result,
     });
   } catch (error: unknown) {
@@ -20,6 +24,6 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(req: NextRequest) {
+  return GET(req);
 }

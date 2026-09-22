@@ -61,7 +61,8 @@ export class MockRailwayProvider implements IRailwayProvider {
   public async fetchAvailability(
     from: string,
     to: string,
-    date: string
+    date: string,
+    options?: { forceSeats?: boolean }
   ): Promise<TrainAvailabilityResult[]> {
     const normalizedFrom = from.trim().toLowerCase();
     const normalizedTo = to.trim().toLowerCase();
@@ -88,7 +89,7 @@ export class MockRailwayProvider implements IRailwayProvider {
       },
     ];
 
-    if (normalizedTo.includes('sylhet') || normalizedFrom.includes('sylhet')) {
+    if (normalizedTo.includes('sylhet') || normalizedFrom.includes('sylhet') || normalizedTo.includes('brahmanbaria') || normalizedFrom.includes('brahmanbaria')) {
       trainTemplates = [
         {
           name: 'Parabat Express',
@@ -135,7 +136,7 @@ export class MockRailwayProvider implements IRailwayProvider {
       ];
     }
 
-    const isBurst = this.forceSeatsAvailable || this.deterministicMode || this.isReleaseBurstWindow();
+    const isBurst = Boolean(options?.forceSeats) || this.forceSeatsAvailable || this.deterministicMode || this.isReleaseBurstWindow();
 
     const results: TrainAvailabilityResult[] = trainTemplates.map((tpl, index) => {
       // Build classes
@@ -143,28 +144,24 @@ export class MockRailwayProvider implements IRailwayProvider {
         {
           className: 'SNIGDHA',
           fare: 750,
-          seatsAvailable: isBurst ? 8 : (index === 0 ? 2 : 0),
+          seatsAvailable: isBurst ? 8 : 0,
           candidateSeats: isBurst
             ? [
                 ...this.generateCoachSeats('KHA', [11, 12, 13, 14]),
                 ...this.generateCoachSeats('GA', [5, 6, 7, 8]),
               ]
-            : index === 0
-            ? this.generateCoachSeats('KHA', [12, 13])
             : [],
         },
         {
           className: 'S_CHAIR',
           fare: 405,
-          seatsAvailable: isBurst ? 14 : (index === 1 ? 1 : 0),
+          seatsAvailable: isBurst ? 14 : 0,
           candidateSeats: isBurst
             ? [
                 ...this.generateCoachSeats('CHA', [21, 22, 23, 24]),
                 ...this.generateCoachSeats('JA', [31, 32, 33, 34]),
                 ...this.generateCoachSeats('JHA', [1, 2, 3, 4, 5, 6]),
               ]
-            : index === 1
-            ? this.generateCoachSeats('CHA', [22])
             : [],
         },
         {

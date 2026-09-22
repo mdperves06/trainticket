@@ -28,7 +28,7 @@ export function getDhakaTime(): { hour: number; minute: number; second: number; 
 /**
  * Executes a single scan cycle across all active alerts.
  */
-export async function runMonitoringCycle(): Promise<{
+export async function runMonitoringCycle(options?: { forceSeats?: boolean }): Promise<{
   scanned: number;
   seatsFound: number;
   errors: number;
@@ -57,7 +57,8 @@ export async function runMonitoringCycle(): Promise<{
         const trains = await defaultRailwayProvider.fetchAvailability(
           alert.fromStation,
           alert.toStation,
-          alert.journeyDate
+          alert.journeyDate,
+          options
         );
 
         // Filter train if trainName or trainCode is specified
