@@ -97,18 +97,31 @@ export default function Dashboard() {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  // Controlled Background Polling:
-  // ONLY run timer if there is at least one active alert with status === 'MONITORING'
+  // Dynamic Real-Time Auto-Update Polling:
+  // Polls alert state every 5 seconds when alerts are active so status updates in real-time
   useEffect(() => {
     const monitoringAlerts = alerts.filter((a) => a.isActive && a.status === 'MONITORING');
 
     if (monitoringAlerts.length > 0) {
-      // Set 30-second controlled polling
+      // Fast 5-second state polling for real-time UI updates
+      const statePollTimer = setInterval(() => {
+        fetchAlerts();
+      }, 5000);
+
+      // 15-second active scan trigger
       pollingRef.current = setInterval(() => {
         fetch('/api/check', { method: 'POST' })
           .then(() => fetchAlerts())
           .catch((err) => console.error('Background poll failed:', err));
-      }, 30000);
+      }, 15000);
+
+      return () => {
+        clearInterval(statePollTimer);
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      };
     } else {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
@@ -401,8 +414,8 @@ export default function Dashboard() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '1rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gap: '0.75rem',
           marginBottom: '1.75rem',
         }}
       >

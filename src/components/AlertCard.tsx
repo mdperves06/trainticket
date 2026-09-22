@@ -24,11 +24,11 @@ import {
   Smartphone,
   Send,
   ExternalLink,
+  Clock,
 } from 'lucide-react';
 import { ScanHistoryEntry } from '@/worker/pollingWorker';
-import { generateDeepSearchUrl } from '@/lib/bookmarkletGenerator';
+import { generateDeepSearchUrl, copyToClipboard } from '@/lib/bookmarkletGenerator';
 import { BANGLADESH_CLASSES } from '@/lib/railwayDatabase';
-
 
 export interface AlertData {
   id: string;
@@ -77,6 +77,41 @@ export default function AlertCard({
   const [showEditModal, setShowEditModal] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [lastScanResult, setLastScanResult] = useState<string | null>(null);
+  const [copiedToast, setCopiedToast] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Real-time second-by-second ticker for relative times
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getRelativeTime = (timestamp?: string | null) => {
+    if (!timestamp) return 'Never checked';
+    const diffMs = now - new Date(timestamp).getTime();
+    const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+    if (diffSec < 5) return 'Just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    return `${diffHours}h ago`;
+  };
+
+  const handleOpenRailway = async () => {
+    const copyText = `ROUTE: ${alert.fromStation} -> ${alert.toStation} | DATE: ${alert.journeyDate} | CLASS: ${alert.seatClass} | PASSENGERS: ${alert.passengerCount}${alert.preferredCoach ? ` | COACH: ${alert.preferredCoach}` : ''}`;
+    await copyToClipboard(copyText);
+    setCopiedToast(true);
+    setTimeout(() => setCopiedToast(false), 3500);
+
+    const url = generateDeepSearchUrl(
+      alert.fromStation,
+      alert.toStation,
+      alert.journeyDate,
+      alert.seatClass
+    );
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   // Edit form state
   const [editClass, setEditClass] = useState(alert.seatClass);
@@ -282,6 +317,13 @@ export default function AlertCard({
           </span>
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Clock size={15} color="#94a3b8" />
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+            Checked: <strong style={{ color: alert.status === 'MONITORING' ? '#f59e0b' : '#cbd5e1' }}>{getRelativeTime(alert.lastCheckedAt)}</strong>
+          </span>
+        </div>
+
         {/* Preferences Tags */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', gridColumn: '1 / -1' }}>
           {alert.preferredCoach && (
@@ -346,35 +388,32 @@ export default function AlertCard({
           flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '0.75rem',
+          gap: '0.65rem',
           borderTop: '1px solid rgba(255, 255, 255, 0.05)',
           paddingTop: '0.85rem',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {/* ⚡ Instant Search Link */}
+          {/* ⚡ Open Railway */}
           <button
-            onClick={() => {
-              const url = generateDeepSearchUrl(
-                alert.fromStation,
-                alert.toStation,
-                alert.journeyDate,
-                alert.seatClass
-              );
-              window.open(url, '_blank', 'noopener,noreferrer');
-            }}
+            onClick={handleOpenRailway}
             className="btn btn-secondary"
             style={{
-              fontSize: '0.775rem',
-              padding: '0.4rem 0.75rem',
+              fontSize: '0.8rem',
+              padding: '0.45rem 0.85rem',
+              minHeight: '40px',
               borderColor: 'rgba(16, 185, 129, 0.4)',
               color: '#6ee7b7',
               background: 'rgba(16, 185, 129, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontWeight: 600,
             }}
-            title="Open official Bangladesh Railway search page for this route and date"
+            title="Open official Bangladesh Railway search page and copy details"
           >
-            <ExternalLink size={13} color="#10b981" />
-            <span>⚡ Instant Search Link</span>
+            <ExternalLink size={14} color="#10b981" />
+            <span>⚡ Open Railway</span>
           </button>
 
           {/* ⚡ Scan Now */}
@@ -383,7 +422,7 @@ export default function AlertCard({
               onClick={handleTargetedScan}
               disabled={scanning}
               className="btn btn-secondary"
-              style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
+              style={{ fontSize: '0.8rem', minHeight: '40px', padding: '0.45rem 0.8rem' }}
               title="Execute single targeted check immediately"
             >
               <Zap size={14} color="#10b981" />
@@ -391,16 +430,34 @@ export default function AlertCard({
             </button>
           )}
 
-          {/* ▶ Start Monitoring or ⏸ Pause */}
+          {/* ⏸ Pause / ▶ Resume / ▶ Start Monitoring */}
           {alert.status === 'MONITORING' ? (
             <button
               onClick={() => onTogglePause(alert.id, alert.status)}
               className="btn btn-secondary"
-              style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
-              title="Pause background polling timers"
+              style={{ fontSize: '0.8rem', minHeight: '40px', padding: '0.45rem 0.85rem' }}
+              title="Pause monitoring"
             >
               <Pause size={14} color="#f59e0b" />
               <span>⏸ Pause</span>
+            </button>
+          ) : alert.status === 'PAUSED' ? (
+            <button
+              onClick={() => onTogglePause(alert.id, alert.status)}
+              className="btn btn-primary"
+              style={{
+                fontSize: '0.8rem',
+                minHeight: '40px',
+                padding: '0.45rem 0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
+              }}
+              title="Resume monitoring"
+            >
+              <Play size={13} fill="#070b14" />
+              <span>▶ Resume</span>
             </button>
           ) : (
             onUpdateAlert && (
@@ -408,14 +465,15 @@ export default function AlertCard({
                 onClick={() => onUpdateAlert(alert.id, { status: 'MONITORING', isActive: true })}
                 className="btn btn-primary"
                 style={{
-                  fontSize: '0.775rem',
-                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8rem',
+                  minHeight: '40px',
+                  padding: '0.45rem 0.85rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.35rem',
                   boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
                 }}
-                title="Activate real-time monitoring and trigger immediate scan"
+                title="Activate real-time monitoring"
               >
                 <Play size={13} fill="#070b14" />
                 <span>▶ Start Monitoring</span>
@@ -423,13 +481,12 @@ export default function AlertCard({
             )
           )}
 
-
           {/* ✏️ Edit Alert */}
           {onUpdateAlert && (
             <button
               onClick={() => setShowEditModal(true)}
               className="btn btn-secondary"
-              style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
+              style={{ fontSize: '0.8rem', minHeight: '40px', padding: '0.45rem 0.8rem' }}
               title="Edit alert preferences"
             >
               <Edit3 size={14} />
@@ -443,8 +500,9 @@ export default function AlertCard({
               onClick={() => onResetStatus(alert.id)}
               className="btn btn-secondary"
               style={{
-                fontSize: '0.775rem',
-                padding: '0.4rem 0.75rem',
+                fontSize: '0.8rem',
+                minHeight: '40px',
+                padding: '0.45rem 0.8rem',
                 borderColor: '#10b981',
                 color: '#6ee7b7',
               }}
@@ -456,12 +514,12 @@ export default function AlertCard({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           {/* History Drawer Toggle */}
           <button
             onClick={() => setShowHistory(!showHistory)}
             className="btn btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }}
+            style={{ fontSize: '0.775rem', minHeight: '40px', padding: '0.4rem 0.75rem' }}
             title="Toggle scan history drawer"
           >
             <History size={13} />
@@ -469,23 +527,48 @@ export default function AlertCard({
             {showHistory ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
-          {/* 🛑 Stop Alert (Delete) */}
+          {/* 🛑 Stop Alert */}
           <button
             onClick={() => onDelete(alert.id)}
             className="btn btn-danger"
             style={{
-              fontSize: '0.75rem',
-              padding: '0.35rem 0.65rem',
+              fontSize: '0.8rem',
+              minHeight: '40px',
+              padding: '0.45rem 0.85rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
+              fontWeight: 600,
             }}
-            title="Completely stop monitoring and delete alert"
+            title="Stop monitoring and delete alert"
           >
-            <Trash2 size={13} />
-            <span>🛑 Stop Alert</span>
+            <Trash2 size={14} />
+            <span>🛑 Stop</span>
           </button>
         </div>
+
+        {/* Dynamic Toast on Copy */}
+        {copiedToast && (
+          <div
+            style={{
+              width: '100%',
+              fontSize: '0.8rem',
+              color: '#6ee7b7',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10b981',
+              padding: '0.45rem 0.85rem',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              marginTop: '0.35rem',
+              fontWeight: 600,
+            }}
+          >
+            <CheckCircle2 size={15} color="#10b981" />
+            <span>Copied! Paste on ticket page</span>
+          </div>
+        )}
       </div>
 
       {/* Scan History Drawer (Collapsible list of last 5 scans) */}

@@ -50,6 +50,7 @@ export default function SirenModal({
     const copyText = `ROUTE: ${alert.fromStation} -> ${alert.toStation} | DATE: ${alert.journeyDate} | CLASS: ${alert.seatClass} | PASSENGERS: ${alert.passengerCount}${alert.preferredCoach ? ` | COACH: ${alert.preferredCoach}` : ''}`;
     await copyToClipboard(copyText);
     setCopiedToast(true);
+    setTimeout(() => setCopiedToast(false), 4000);
 
     // Deep link with search parameters
     const portalUrl = generateDeepSearchUrl(
@@ -272,24 +273,25 @@ export default function SirenModal({
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {copiedToast && (
             <div
               style={{
-                fontSize: '0.8rem',
+                fontSize: '0.85rem',
                 color: '#6ee7b7',
-                background: 'rgba(16, 185, 129, 0.15)',
+                background: 'rgba(16, 185, 129, 0.2)',
                 border: '1px solid #10b981',
-                padding: '0.45rem 0.8rem',
+                padding: '0.6rem 1rem',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.4rem',
+                gap: '0.5rem',
+                fontWeight: 600,
               }}
             >
-              <CheckCircle2 size={15} color="#10b981" />
-              <span>📋 Copied Passenger Info to Clipboard! Opening official portal...</span>
+              <CheckCircle2 size={16} color="#10b981" />
+              <span>Copied! Paste on ticket page</span>
             </div>
           )}
 
@@ -297,36 +299,63 @@ export default function SirenModal({
             onClick={handleOpenPortal}
             className="btn btn-primary"
             style={{
-              padding: '0.85rem 1.25rem',
-              fontSize: '0.95rem',
+              padding: '0.9rem 1.25rem',
+              fontSize: '1rem',
               fontWeight: 700,
               width: '100%',
+              minHeight: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
               boxShadow: '0 0 25px rgba(16, 185, 129, 0.5)',
             }}
           >
             <ExternalLink size={18} />
-            <span>↗ Go to Official Booking Flow</span>
+            <span>↗ Open Railway Portal</span>
           </button>
 
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            <button
-              onClick={handleSilence}
-              className="btn btn-secondary"
-              style={{ fontSize: '0.825rem', padding: '0.6rem' }}
-              disabled={isSilenced}
-            >
-              <VolumeX size={15} />
-              <span>{isSilenced ? 'Siren Silenced' : 'Silence Siren Only'}</span>
-            </button>
-
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '0.65rem',
+            }}
+          >
             <button
               onClick={handleStopAndDismiss}
               className="btn btn-danger"
-              style={{ fontSize: '0.825rem', padding: '0.6rem' }}
+              style={{
+                fontSize: '0.875rem',
+                padding: '0.75rem 1rem',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                fontWeight: 700,
+              }}
             >
-              <Ban size={15} />
-              <span>Stop & Dismiss Alert</span>
+              <Ban size={16} />
+              <span>🛑 Stop & Silence</span>
+            </button>
+
+            <button
+              onClick={handleSilence}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '0.85rem',
+                padding: '0.75rem 1rem',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+              }}
+              disabled={isSilenced}
+            >
+              <VolumeX size={16} />
+              <span>{isSilenced ? 'Siren Silenced' : '🔇 Silence Siren Only'}</span>
             </button>
           </div>
         </div>
